@@ -1,0 +1,7 @@
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - protobufjs
+  - unrs-resolver
+
+onlyBuiltDependencies:
+  - sharp

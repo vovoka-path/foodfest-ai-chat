@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Food Fest AI Chat</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <style>
+      /* Простая стилизация скроллбара */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <!-- Основной контейнер чата, управляемый Alpine.js -->
+    <div
+      x-data="chatWidget()"
+      class="w-full max-w-2xl h-[90vh] flex flex-col bg-white rounded-lg shadow-xl"
+    >
+      <!-- Заголовок -->
+      <div class="p-4 border-b bg-blue-500 text-white rounded-t-lg">
+        <h1 class="text-xl font-bold">Food Fest AI Ассистент</h1>
+      </div>
+
+      <!-- Окно сообщений -->
+      <div x-ref="messages" class="flex-1 p-4 overflow-y-auto space-y-4">
+        <!-- Цикл по сообщениям -->
+        <template x-for="message in messages" :key="message.id">
+          <div
+            :class="message.role === 'user' ? 'flex justify-end' : 'flex justify-start'"
+          >
+            <div
+              :class="message.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'"
+              class="max-w-md p-3 rounded-lg shadow"
+            >
+              <p class="text-sm" x-text="message.content"></p>
+            </div>
+          </div>
+        </template>
+
+        <!-- Индикатор "печатает..." -->
+        <div x-show="isLoading" class="flex justify-start">
+          <div class="bg-gray-200 text-gray-500 p-3 rounded-lg shadow">
+            <span class="animate-pulse">печатает...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Форма ввода -->
+      <div class="p-4 border-t bg-gray-50 rounded-b-lg">
+        <form @submit.prevent="sendMessage" class="flex items-center space-x-2">
+          <input
+            type="text"
+            x-model="userInput"
+            :disabled="isLoading"
+            placeholder="Спросите что-нибудь о фестивале..."
+            class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+            autocomplete="off"
+          />
+          <button
+            type="submit"
+            :disabled="isLoading"
+            class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 disabled:bg-blue-300"
+          >
+            Отправить
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+    function chatWidget() {
+        return {
+            // --- Состояние (State) ---
+            messages: [],
+            userInput: '',
+            isLoading: false,
+            sessionId: null,
+            backendUrl: '/api/chat/message', // Убедитесь, что путь верный
+
+            // --- Логика (Actions) ---
+            async sendMessage() {
+                const query = this.userInput.trim();
+                if (!query) return;
+
+                this.messages.push({ id: Date.now(), role: 'user', content: query });
+                this.userInput = '';
+                this.scrollToBottom();
+                this.isLoading = true;
+
+                try {
+                    // ИСПРАВЛЕНО: Формируем тело запроса по правилам
+                    const payload = { query: query };
+                    if (this.sessionId) {
+                        payload.sessionId = this.sessionId;
+                    }
+
+                    const response = await fetch(this.backendUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        // Попробуем прочитать тело ошибки для лучшей отладки
+                        const errorBody = await response.json().catch(() => ({ message: 'Could not parse error response.' }));
+                        console.error('Server responded with an error:', response.status, errorBody);
+                        throw new Error('Network response was not ok');
+                    }
+
+                    const data = await response.json();
+
+                    this.messages.push({ id: Date.now() + 1, role: 'assistant', content: data.response });
+                    this.sessionId = data.sessionId;
+
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    this.messages.push({ id: Date.now() + 1, role: 'assistant', content: 'Извините, произошла ошибка. Попробуйте еще раз.' });
+                } finally {
+                    this.isLoading = false;
+                    this.scrollToBottom();
+                }
+            },
+
+            // --- Вспомогательная функция ---
+            scrollToBottom() {
+                this.$nextTick(() => {
+                    this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
+                });
+            }
+        }
+    }
+</script>
+  </body>
+</html>
