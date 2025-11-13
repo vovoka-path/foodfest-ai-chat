@@ -158,12 +158,30 @@ npm run start:prod
 
 ### Background Services
 ```bash
-# Start Redis server
-redis-server
+# Start all background services using Docker Compose
+docker-compose up -d
 
-# Start PostgreSQL
-sudo systemctl start postgresql
+# Check service status
+docker-compose ps
+
+# View service logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Stop services and remove volumes (clean slate)
+docker-compose down -v
 ```
+
+#### Services Overview
+- **PostgreSQL 16 with pgvector**: Primary database on port 5433
+  - Container: `foodfest-ai-chat-db`
+  - Data persistence: `foodfest_postgres_data` volume
+
+- **Redis 7**: Queue management and caching on port 6379
+  - Container: `foodfest-ai-chat-redis`
+  - Data persistence: `foodfest_redis_data` volume
 
 ## 📚 API Documentation
 
